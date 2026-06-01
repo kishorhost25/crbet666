@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Information about the player's casino profile and balance.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "balance": { "type": "number" },
+        "bonusBalance": { "type": "number" },
+        "vipLevel": { "type": "number" },
+        "totalDeposits": { "type": "number" },
+        "totalBets": { "type": "number" },
+        "isGuest": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "lastCheckIn": { "type": "string", "format": "date-time" },
+        "spinsCount": { "type": "number" },
+        "photoUrl": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "referredBy": { "type": "string" }
+      },
+      "required": ["uid", "username", "balance", "bonusBalance", "vipLevel", "isGuest", "createdAt", "spinsCount", "referralCode"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Details of deposits, withdrawals, bonus rewards, or game-win transactions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal", "reward", "bet_win", "bet_loss", "spin_win"] },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["bkash", "nagad", "rocket"] },
+        "accountNo": { "type": "string" },
+        "txnId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "success", "failed"] },
+        "createdAt": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "amount", "status", "createdAt", "description"]
+    },
+    "BetRecord": {
+      "title": "BetRecord",
+      "description": "Records of spins, wins, and losses on slot machines or other games.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "gameId": { "type": "string" },
+        "gameTitle": { "type": "string" },
+        "betAmount": { "type": "number" },
+        "winAmount": { "type": "number" },
+        "payoutMultiplier": { "type": "number" },
+        "result": { "type": "string", "enum": ["win", "loss"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "gameId", "gameTitle", "betAmount", "winAmount", "payoutMultiplier", "result", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Users root collection indexed by userId."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Transactions associated with a specific user."
+    },
+    "/users/{userId}/bets/{betId}": {
+      "schema": "BetRecord",
+      "description": "Bet records for each slot game / game session."
+    }
+  }
+}

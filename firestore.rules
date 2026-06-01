@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection verification path (read-only for boot connectivity checks)
+    match /test/connection {
+      allow read: if true;
+    }
+    
+    // Global Helpers
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    
+    // Users collection rules and security
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && (
+        incoming().uid == existing().uid &&
+        incoming().username == existing().username &&
+        incoming().createdAt == existing().createdAt &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['balance', 'bonusBalance', 'vipLevel', 'totalDeposits', 'totalBets', 'lastCheckIn', 'spinsCount', 'photoUrl'])
+      );
+      allow delete: if false;
+      
+      // Subcollections
+      match /transactions/{transactionId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidTransaction(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId && isValidTransaction(incoming());
+        allow delete: if false;
+      }
+      
+      match /bets/{betId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isValidBet(incoming());
+        allow update: if isSignedIn() && request.auth.uid == userId && isValidBet(incoming());
+        allow delete: if false;
+      }
+    }
+    
+    // Validation helper schemas / rules
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.username is string && data.username.size() <= 64 &&
+             data.balance is number && data.balance >= 0 &&
+             data.bonusBalance is number && data.bonusBalance >= 0 &&
+             data.vipLevel is number && data.vipLevel >= 1 &&
+             data.totalDeposits is number && data.totalDeposits >= 0 &&
+             data.totalBets is number && data.totalBets >= 0 &&
+             data.isGuest is bool &&
+             data.createdAt is string &&
+             data.spinsCount is number &&
+             data.referralCode is string && data.referralCode.size() <= 32;
+    }
+    
+    function isValidTransaction(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.type is string && data.type.size() <= 32 &&
+             data.amount is number && data.amount >= 0 &&
+             data.status is string && (data.status == 'pending' || data.status == 'success' || data.status == 'failed') &&
+             data.createdAt is string &&
+             data.description is string && data.description.size() <= 256;
+    }
+    
+    function isValidBet(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.gameId is string && data.gameId.size() <= 128 &&
+             data.gameTitle is string && data.gameTitle.size() <= 128 &&
+             data.betAmount is number && data.betAmount >= 0 &&
+             data.winAmount is number && data.winAmount >= 0 &&
+             data.payoutMultiplier is number &&
+             data.result is string && (data.result == 'win' || data.result == 'loss') &&
+             data.createdAt is string;
+    }
+  }
+}
